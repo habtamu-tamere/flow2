@@ -993,91 +993,345 @@
     </footer>
 
     <script>
-        // Tab switching functionality
-        function switchTab(tabName) {
-            // Hide all tab contents
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            
-            // Show the selected tab content
-            document.getElementById(tabName + '-tab').classList.add('active');
-            
-            // Activate the clicked tab
-            event.currentTarget.classList.add('active');
-        }
-        
-        // Modal functionality
-        const loginModal = document.getElementById('loginModal');
-        const registerModal = document.getElementById('registerModal');
-        const loginBtn = document.getElementById('loginBtn');
-        const registerBtn = document.getElementById('registerBtn');
-        const switchToRegister = document.getElementById('switchToRegister');
-        const switchToLogin = document.getElementById('switchToLogin');
-        const closeButtons = document.querySelectorAll('.close-modal');
-        
-        loginBtn.addEventListener('click', () => {
-            loginModal.style.display = 'flex';
+  // Tab switching functionality
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    document.getElementById(tabName + '-tab').classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    if (tabName === 'campaigns') {
+        fetchCampaigns();
+    }
+}
+
+// Modal functionality
+const loginModal = document.getElementById('loginModal');
+const registerModal = document.getElementById('registerModal');
+const loginBtn = document.getElementById('loginBtn');
+const registerBtn = document.getElementById('registerBtn');
+const switchToRegister = document.getElementById('switchToRegister');
+const switchToLogin = document.getElementById('switchToLogin');
+const closeButtons = document.querySelectorAll('.close-modal');
+
+loginBtn.addEventListener('click', () => {
+    loginModal.style.display = 'flex';
+});
+
+registerBtn.addEventListener('click', () => {
+    registerModal.style.display = 'flex';
+});
+
+switchToRegister.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginModal.style.display = 'none';
+    registerModal.style.display = 'flex';
+});
+
+switchToLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    registerModal.style.display = 'none';
+    loginModal.style.display = 'flex';
+});
+
+closeButtons.forEach(button => {
+    button.addEventListener('click', () => {
+        loginModal.style.display = 'none';
+        registerModal.style.display = 'none';
+    });
+});
+
+window.addEventListener('click', (e) => {
+    if (e.target === loginModal) {
+        loginModal.style.display = 'none';
+    }
+    if (e.target === registerModal) {
+        registerModal.style.display = 'none';
+    }
+});
+
+// Handle registration
+document.querySelector('#registerModal .auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('register-name').value;
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const role = document.getElementById('register-role').value;
+    const tiktokUsername = prompt('Enter your TikTok username'); // Simple prompt for demo; replace with proper input field in production
+
+    try {
+        const response = await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, email, password, role, tiktokUsername }),
         });
-        
-        registerBtn.addEventListener('click', () => {
-            registerModal.style.display = 'flex';
-        });
-        
-        switchToRegister.addEventListener('click', (e) => {
-            e.preventDefault();
-            loginModal.style.display = 'none';
-            registerModal.style.display = 'flex';
-        });
-        
-        switchToLogin.addEventListener('click', (e) => {
-            e.preventDefault();
+        const data = await response.json();
+        if (response.ok) {
+            localStorage.setItem('token', data.token);
+            alert('Registration successful!');
             registerModal.style.display = 'none';
+            updateAuthButtons();
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        alert('Error registering');
+    }
+});
+
+// Handle login
+document.querySelector('#loginModal .auth-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await response.json();
+        if (response.ok) {
+            localStorage.setItem('token', data.token);
+            alert('Login successful!');
+            loginModal.style.display = 'none';
+            updateAuthButtons();
+        } else {
+            alert(data.message);
+        }
+    } catch (error) {
+        alert('Error logging in');
+    }
+});
+
+// Handle logout
+function logout() {
+    fetch('/api/auth/logout', { method: 'POST' })
+        .then(() => {
+            localStorage.removeItem('token');
+            alert('Logged out successfully');
+            updateAuthButtons();
+        });
+}
+
+// Update auth buttons based on login status
+function updateAuthButtons() {
+    const token = localStorage.getItem('token');
+    const authButtons = document.querySelector('.auth-buttons');
+    if (token) {
+        authButtons.innerHTML = `
+            <button class="btn btn-outline" onclick="logout()">Logout</button>
+            <button class="btn btn-primary" onclick="openCampaignForm()">Create Campaign</button>
+        `;
+    } else {
+        authButtons.innerHTML = `
+            <button class="btn btn-outline" id="loginBtn">Login</button>
+            <button class="btn btn-primary" id="registerBtn">Sign Up</button>
+        `;
+        document.getElementById('loginBtn').addEventListener('click', () => {
             loginModal.style.display = 'flex';
         });
-        
-        closeButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                loginModal.style.display = 'none';
-                registerModal.style.display = 'none';
+        document.getElementById('registerBtn').addEventListener('click', () => {
+            registerModal.style.display = 'flex';
+        });
+    }
+}
+
+// Open campaign creation form (modal or new page)
+function openCampaignForm() {
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <div class="auth-form">
+                <h2>Create a Campaign</h2>
+                <form id="campaign-form">
+                    <div class="form-group">
+                        <label for="campaign-title">Title</label>
+                        <input type="text" id="campaign-title" placeholder="Enter campaign title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-description">Description</label>
+                        <textarea id="campaign-description" placeholder="Enter campaign description" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-industry">Industry</label>
+                        <select id="campaign-industry" required>
+                            <option value="fashion">Fashion & Beauty</option>
+                            <option value="food">Food & Beverage</option>
+                            <option value="tech">Technology</option>
+                            <option value="travel">Travel & Tourism</option>
+                            <option value="health">Health & Fitness</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-budget">Budget Range</label>
+                        <select id="campaign-budget" required>
+                            <option value="micro">Micro (under $100)</option>
+                            <option value="small">Small ($100-$500)</option>
+                            <option value="medium">Medium ($500-$2,000)</option>
+                            <option value="large">Large ($2,000+)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-performance">Performance Model</label>
+                        <select id="campaign-performance" required>
+                            <option value="cpa">Cost Per Acquisition</option>
+                            <option value="cpc">Cost Per Click</option>
+                            <option value="cpe">Cost Per Engagement</option>
+                            <option value="fixed">Fixed Rate</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-niches">Niches (comma-separated)</label>
+                        <input type="text" id="campaign-niches" placeholder="e.g., Fashion, Lifestyle" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-basePay">Base Pay ($)</label>
+                        <input type="number" id="campaign-basePay" placeholder="Enter base pay" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-commission">Commission (%)</label>
+                        <input type="number" id="campaign-commission" placeholder="Enter commission percentage" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="campaign-deadline">Deadline</label>
+                        <input type="date" id="campaign-deadline" required>
+                    </div>
+                    <button class="btn btn-primary" type="submit">Create Campaign</button>
+                </form>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    modal.style.display = 'flex';
+
+    modal.querySelector('.close-modal').addEventListener('click', () => {
+        modal.remove();
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+
+    modal.querySelector('#campaign-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const campaignData = {
+            title: document.getElementById('campaign-title').value,
+            description: document.getElementById('campaign-description').value,
+            industry: document.getElementById('campaign-industry').value,
+            budget: document.getElementById('campaign-budget').value,
+            performanceModel: document.getElementById('campaign-performance').value,
+            niches: document.getElementById('campaign-niches').value.split(',').map(n => n.trim()),
+            basePay: document.getElementById('campaign-basePay').value,
+            commission: document.getElementById('campaign-commission').value,
+            deadline: document.getElementById('campaign-deadline').value,
+        };
+
+        try {
+            const response = await fetch('/api/campaigns/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                },
+                body: JSON.stringify(campaignData),
             });
-        });
-        
-        window.addEventListener('click', (e) => {
-            if (e.target === loginModal) {
-                loginModal.style.display = 'none';
+            const data = await response.json();
+            if (response.ok) {
+                alert('Campaign created successfully!');
+                modal.remove();
+                fetchCampaigns();
+            } else {
+                alert(data.message);
             }
-            if (e.target === registerModal) {
-                registerModal.style.display = 'none';
-            }
+        } catch (error) {
+            alert('Error creating campaign');
+        }
+    });
+}
+
+// Fetch and display campaigns dynamically
+async function fetchCampaigns() {
+    const industry = document.getElementById('industry').value;
+    const budget = document.getElementById('budget').value;
+    const performance = document.getElementById('performance').value;
+
+    try {
+        const response = await fetch(`/api/campaigns?industry=${industry}&budget=${budget}&performance=${performance}`);
+        const campaigns = await response.json();
+        const cardGrid = document.querySelector('#campaigns-tab .card-grid');
+        cardGrid.innerHTML = '';
+
+        campaigns.forEach(campaign => {
+            const card = document.createElement('div');
+            card.className = 'card campaign-card';
+            card.innerHTML = `
+                <div class="card-header">
+                    <h3>${campaign.title}</h3>
+                    <span class="campaign-badge">${campaign.performanceModel.toUpperCase()}</span>
+                </div>
+                <div class="card-body">
+                    <p>${campaign.description}</p>
+                    <p><strong>Advertiser TikTok:</strong> @${campaign.tiktokUsername}</p>
+                    <div class="niche-tags">
+                        ${campaign.niches.map(niche => `<span class="niche-tag">${niche}</span>`).join('')}
+                    </div>
+                    <div class="stats">
+                        <div class="stat">
+                            <span class="stat-value">$${campaign.basePay}${campaign.commission ? ` + ${campaign.commission}%` : ''}</span>
+                            <span class="stat-label">Base + Commission</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${campaign.applications.length}</span>
+                            <span class="stat-label">Applications</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <span>Deadline: ${new Date(campaign.deadline).toLocaleDateString()}</span>
+                    <button class="btn btn-primary btn-sm" onclick="applyToCampaign('${campaign._id}')">Apply Now</button>
+                </div>
+            `;
+            cardGrid.appendChild(card);
         });
-        
-        // Apply buttons functionality
-        document.querySelectorAll('.btn-primary').forEach(button => {
-            if (button.textContent === 'Apply Now') {
-                button.addEventListener('click', function() {
-                    alert('Application system would open here. In a real application, this would connect to a Node.js backend with MongoDB/Mongoose.');
-                });
-            }
+    } catch (error) {
+        console.error('Error fetching campaigns:', error);
+    }
+}
+
+// Apply to a campaign
+async function applyToCampaign(campaignId) {
+    try {
+        const response = await fetch(`/api/campaigns/${campaignId}/apply`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
         });
-        
-        // Simulate authentication (for demo purposes)
-        const authForms = document.querySelectorAll('.auth-form');
-        authForms.forEach(form => {
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                alert('Authentication system would process here. In a real application, this would connect to a Node.js backend with hashed passwords using bcrypt and JWT tokens.');
-                
-                // Close the modal after submission
-                loginModal.style.display = 'none';
-                registerModal.style.display = 'none';
-            });
-        });
+        const data = await response.json();
+        alert(data.message);
+        fetchCampaigns();
+    } catch (error) {
+        alert('Error applying to campaign');
+    }
+}
+
+// Apply filters
+document.querySelector('#campaigns-tab .btn-primary').addEventListener('click', fetchCampaigns);
+
+// Initial setup
+updateAuthButtons();
+fetchCampaigns();
     </script>
 </body>
 </html>
