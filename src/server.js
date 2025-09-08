@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth');
 const campaignRoutes = require('./routes/campaigns');
+const path = require('path');
 
 dotenv.config();
 connectDB();
@@ -11,7 +12,12 @@ connectDB();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve index.html for the root route
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/campaigns', campaignRoutes);
